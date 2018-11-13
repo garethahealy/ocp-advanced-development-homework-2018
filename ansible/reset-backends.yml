@@ -1,0 +1,9 @@
+---
+- name: Configure nexus
+  hosts: localhost
+  connection: local
+  vars:
+    parks_prod_namespace: "{{ GUID }}-parks-prod"
+
+  roles:
+  - { role: reset-backends }

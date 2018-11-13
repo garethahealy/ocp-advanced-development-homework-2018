@@ -1,0 +1,62 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: jenkins-agent-skopeo-template
+metadata:
+  name: jenkins-agent-skopeo-template
+objects:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: jenkins-agent-appdev
+    name: jenkins-agent-maven-35-centos7
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - annotations:
+        openshift.io/imported-from: docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11
+      from:
+        kind: DockerImage
+        name: docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11
+      importPolicy: {}
+      name: v3.11
+      referencePolicy:
+        type: Source
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: jenkins-agent-appdev
+    name: jenkins-agent-appdev
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: jenkins-slave-appdev
+    name: jenkins-slave-appdev
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: jenkins-agent-appdev:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      dockerfile: |-
+        FROM docker.io/openshift/jenkins-agent-maven-35-centos7:v3.11
+        USER root
+        RUN yum -y install skopeo && yum clean all
+        USER 1001
+      type: Dockerfile
+    strategy:
+      dockerStrategy:
+        from:
+          kind: ImageStreamTag
+          name: jenkins-agent-maven-35-centos7:v3.11
+      type: Docker
+    successfulBuildsHistoryLimit: 5

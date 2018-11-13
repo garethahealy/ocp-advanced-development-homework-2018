@@ -1,0 +1,46 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: mlbparks-binary-template
+metadata:
+  name: mlbparks-binary-template
+objects:
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: mlbparks
+    name: mlbparks
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: mparks
+    name: mparks
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: mlbparks-binary
+    name: mlbparks-binary
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: mlbparks:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: jboss-eap70-openshift:1.7
+          namespace: openshift
+      type: Source
+    successfulBuildsHistoryLimit: 5

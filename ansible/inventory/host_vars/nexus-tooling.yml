@@ -1,0 +1,13 @@
+---
+
+ansible_connection: local
+
+openshift_cluster_content:
+- object: nexus-deploy
+  content:
+  - name: nexus
+    template: "{{ playbook_dir }}/openshift-templates/nexus/nexus-persistent-template.yml"
+    params: "{{ playbook_dir }}/params/nexus/deploy"
+    namespace: "{{ nexus_namespace }}"
+    tags:
+    - nexus

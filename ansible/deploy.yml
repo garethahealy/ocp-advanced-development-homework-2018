@@ -1,0 +1,16 @@
+---
+- name: Deploy {{ target }}
+  hosts: "{{ target }}"
+  vars:
+    nexus_namespace: "{{ GUID }}-nexus"
+    sonarqube_namespace: "{{ GUID }}-sonarqube"
+    jenkins_namespace: "{{ GUID }}-jenkins"
+    parks_dev_namespace: "{{ GUID }}-parks-dev"
+    parks_prod_namespace: "{{ GUID }}-parks-prod"
+    cluster_uri: "{{ CLUSTER }}"
+    my_guid: "{{ GUID }}"
+    github_repo: "{{ REPO }}"
+
+  roles:
+  - { role: openshift-applier/roles/openshift-applier }
+  - { role: is-ready }

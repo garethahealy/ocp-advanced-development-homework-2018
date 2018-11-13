@@ -1,0 +1,12 @@
+---
+- name: "Jenkins is ready"
+  include_tasks: "{{ playbook_dir }}/roles/is-ready/tasks/jenkins.yml"
+  when: target == "setup_jenkins"
+
+- name: "Nexus is ready"
+  include_tasks: "{{ playbook_dir }}/roles/is-ready/tasks/nexus.yml"
+  when: target == "setup_nexus"
+
+- name: "Sonar is ready"
+  include_tasks: "{{ playbook_dir }}/roles/is-ready/tasks/sonar.yml"
+  when: target == "setup_sonar"

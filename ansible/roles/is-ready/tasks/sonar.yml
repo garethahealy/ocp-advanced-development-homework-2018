@@ -1,0 +1,16 @@
+---
+- name: "Look up Sonar URL"
+  command: >
+    oc get route sonarqube -n {{ sonarqube_namespace }} -o custom-columns=ROUTE:.spec.host --no-headers
+  register: sonar_url_result
+
+- name: "Check sonar listening on http://{{ sonar_url_result.stdout }}"
+  uri: 
+    url: "http://{{ sonar_url_result.stdout }}"
+    method: GET
+    status_code: 200
+  retries: 180
+  delay: 5
+  register: sonar_result
+  until: sonar_result is not failed
+  changed_when: false

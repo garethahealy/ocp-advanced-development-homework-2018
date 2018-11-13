@@ -1,0 +1,20 @@
+---
+- name: Creates tmp directory
+  file:
+    path: /tmp/gahealy
+    state: directory
+    mode: 0775
+
+- name: Download nexus script
+  get_url:
+    url: https://raw.githubusercontent.com/wkulhanek/ocp_advanced_development_resources/master/nexus/setup_nexus3.sh
+    dest: /tmp/gahealy/setup_nexus3.sh
+    mode: 0775
+
+- name: Look up Nexus URL
+  command: >
+    oc get route nexus -n {{ nexus_namespace }} -o custom-columns=ROUTE:.spec.host --no-headers
+  register: nexus_url_result
+
+- name: Run nexus script
+  command: "/tmp/gahealy/setup_nexus3.sh admin admin123 http://{{ nexus_url_result.stdout }}"

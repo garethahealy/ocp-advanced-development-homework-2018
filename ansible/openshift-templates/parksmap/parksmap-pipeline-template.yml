@@ -1,0 +1,48 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: parksmap-template
+metadata:
+  name: parksmap-template
+objects:
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: parksmap
+    name: parksmap-pipeline
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output: {}
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      contextDir: advdev_homework_template/ParksMap
+      git:
+        uri: "${REPO}"
+      type: Git
+    strategy:
+      jenkinsPipelineStrategy:
+        jenkinsfilePath: Jenkinsfile
+        env:
+        - name: GUID
+          value: "${GUID}"
+        - name: CLUSTER
+          value: "${CLUSTER}"
+      type: JenkinsPipeline
+    successfulBuildsHistoryLimit: 5
+parameters:
+- description: My GUID
+  displayName: OpenTLC GUI
+  name: GUID
+  required: true
+- description: My Cluster
+  displayName: OpenTLC Cluster
+  name: CLUSTER
+  required: true
+- description: My GitHub Repo
+  displayName: GitHub Repo
+  name: REPO
+  required: true

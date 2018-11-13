@@ -1,0 +1,139 @@
+// Jenkinsfile for NationalParks
+podTemplate(
+  label: "skopeo-pod",
+  cloud: "openshift",
+  inheritFrom: "maven",
+  containers: [
+    containerTemplate(
+      name: "jnlp",
+      image: "docker-registry.default.svc:5000/${GUID}-jenkins/jenkins-agent-appdev",
+      resourceRequestMemory: "1Gi",
+      resourceLimitMemory: "2Gi"
+    )
+  ]
+) {
+  node('skopeo-pod') {
+    echo "GUID: ${GUID}"
+    echo "CLUSTER: ${CLUSTER}"
+
+    // Your Pipeline Code goes here. Make sure to use the ${GUID} and ${CLUSTER} parameters where appropriate
+    // You need to build the application in directory `Nationalparks`.
+    // Also copy "../nexus_settings.xml" to your build directory
+    // and replace 'GUID' in the file with your ${GUID} to point to >your< Nexus instance
+
+    stage('Checkout Source') {
+      sh "git clone https://github.com/garethahealy/ocp-advanced-development-homework-2018.git ."
+    }
+
+    stage('Build Source') {
+      dir("advdev_homework_template/Nationalparks") {
+        sh "mvn -s ../nexus_settings.xml clean package -DskipTests=true"
+      }
+    }
+
+    stage('Test Source') {
+      dir("advdev_homework_template/Nationalparks") {
+        sh "mvn -s ../nexus_settings.xml test"
+      }
+    }
+
+    stage('Code Analysis') {
+      dir("advdev_homework_template/Nationalparks") {
+        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube-${GUID}-sonarqube.apps.${CLUSTER}"
+      }
+    }
+
+    stage('Build Container') {
+      dir("advdev_homework_template/Nationalparks") {
+        openshift.withCluster() {
+          openshift.withProject() {
+            def builder = openshift.selector("buildconfig", "nationalparks-binary")
+            builder.startBuild("--from-file=target/nationalparks.jar").logs("-f")
+
+            openshift.tag("nationalparks:latest", "${GUID}-parks-dev/nationalparks:latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Dev') {
+      dir("advdev_homework_template/Nationalparks") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-dev") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-dev", "SERVICE_NAME=nationalparks", "APPNAME_ENV='National Parks (Dev)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "nationalparks")
+            dc.rollout().status("--watch=true")
+
+            def response = sh(returnStdout: true, script: "curl nationalparks.${GUID}-parks-dev.svc.cluster.local:8080/ws/info/").trim()
+            echo "response == $response"
+            if (!response.contains("National Parks (Dev)")) {
+              error "Got incorrect response"
+            }
+
+            openshift.tag("nationalparks:latest", "${GUID}-parks-prod/nationalparks:latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Prod Blue') {
+      dir("advdev_homework_template/Nationalparks") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=nationalparks-blue", "APPNAME_ENV='National Parks (Blue)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "nationalparks-blue")
+            dc.rollout().status("--watch=true")
+
+            def response = sh(returnStdout: true, script: "curl nationalparks-blue.${GUID}-parks-prod.svc.cluster.local:8080/ws/info/").trim()
+            echo "response == $response"
+            if (!response.contains("National Parks (Blue)")) {
+              error "Got incorrect response"
+            }
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Prod Green') {
+      dir("advdev_homework_template/Nationalparks") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=nationalparks-green", "APPNAME_ENV='National Parks (Green)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "nationalparks-green")
+            dc.rollout().status("--watch=true")
+
+            def response = sh(returnStdout: true, script: "curl nationalparks-green.${GUID}-parks-prod.svc.cluster.local:8080/ws/info/").trim()
+            echo "response == $response"
+            if (!response.contains("National Parks (Green)")) {
+              error "Got incorrect response"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Convenience Functions to read variables from the pom.xml
+// Do not change anything below this line.
+def getVersionFromPom(pom) {
+  def matcher = readFile(pom) =~ '<version>(.+)</version>'
+  matcher ? matcher[0][1] : null
+}
+def getGroupIdFromPom(pom) {
+  def matcher = readFile(pom) =~ '<groupId>(.+)</groupId>'
+  matcher ? matcher[0][1] : null
+}
+def getArtifactIdFromPom(pom) {
+  def matcher = readFile(pom) =~ '<artifactId>(.+)</artifactId>'
+  matcher ? matcher[0][1] : null
+}

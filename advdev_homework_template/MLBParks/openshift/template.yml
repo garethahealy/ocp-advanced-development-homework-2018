@@ -1,0 +1,151 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+labels:
+  app: mlbparks-app
+  template: mlbparks-app
+metadata:
+  name: mlbparks-app
+objects:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: "${SERVICE_NAME}"
+  data:
+    APPNAME: "${APPNAME_ENV}"
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: "${SERVICE_NAME}"
+    name: "${SERVICE_NAME}"
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: "${SERVICE_NAME}"
+      deploymentconfig: "${SERVICE_NAME}"
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+        post:
+          execNewPod:
+            command:
+            - /bin/sh
+            - -c
+            - "curl http://${SERVICE_NAME}:8080/ws/data/load/"
+            containerName: mlbparks
+          failurePolicy: ignore
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: "${SERVICE_NAME}"
+          deploymentconfig: "${SERVICE_NAME}"
+      spec:
+        containers:
+        - env:
+          - name: DB_HOST
+            value: "mongodb"
+          - name: DB_PORT
+            value: "27017"
+          - name: DB_USERNAME
+            value: "mongodb"
+          - name: DB_PASSWORD
+            value: "mongodb"
+          - name: DB_NAME
+            value: "mongodb"
+          - name: DB_REPLICASET
+            value: "rs0"
+          envFrom:
+          - configMapRef:
+              name: "${SERVICE_NAME}"
+          image: "docker-registry.default.svc:5000/${PROJECT}/mlbparks:latest"
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ws/healthz/
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          name: mlbparks
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ws/healthz/
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 750m
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: "${SERVICE_NAME}"
+      type: parksmap-backend
+    name: "${SERVICE_NAME}"
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: "${SERVICE_NAME}"
+      deploymentconfig: "${SERVICE_NAME}"
+    sessionAffinity: None
+    type: ClusterIP
+parameters:
+- description: The name of the service
+  displayName: Service Name
+  name: SERVICE_NAME
+  value: "mlbparks"
+- description: The name of the app
+  displayName: App Name
+  name: APPNAME_ENV
+  value: "MLB Parks (Dev)"
+- description: The project image is running in
+  displayName: Project Name
+  name: PROJECT
+  value: "70b3-parks-dev"

@@ -1,0 +1,20 @@
+---
+
+ansible_connection: local
+
+openshift_cluster_content:
+- object: sonarqube-deploy
+  content:
+  - name: sonarqube-postgresql
+    template: "{{ playbook_dir }}/openshift-templates/sonarqube/postgresql-persistent-template.yml"
+    params: "{{ playbook_dir }}/params/sonarqube/deploy-postgresql"
+    namespace: "{{ sonarqube_namespace }}"
+    tags:
+    - sonarqube-postgresql
+
+  - name: sonarqube
+    template: "{{ playbook_dir }}/openshift-templates/sonarqube/sonarqube-persistent-template.yml"
+    params: "{{ playbook_dir }}/params/sonarqube/deploy"
+    namespace: "{{ sonarqube_namespace }}"
+    tags:
+    - sonarqube

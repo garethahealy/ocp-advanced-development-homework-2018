@@ -1,0 +1,26 @@
+---
+- name: Starting build config for jenkins-slave-appdev
+  command: "oc start-build jenkins-slave-appdev --wait=true -n {{ jenkins_namespace }}"
+  changed_when: false
+
+- name: Grant jenkins service account privalges on projects
+  command: "oc policy add-role-to-user edit system:serviceaccount:{{ jenkins_namespace }}:jenkins -n {{ item }}"
+  changed_when: false
+  with_items:
+  - "{{ parks_dev_namespace }}"
+  - "{{ parks_prod_namespace }}"
+
+- name: Grant image puller from prod to dev
+  command: "oc policy add-role-to-group system:image-puller system:serviceaccounts:{{ parks_prod_namespace }} -n {{ parks_dev_namespace }}"
+  changed_when: false
+
+- name: Grant view for dev and prod
+  command: "oc policy add-role-to-user view --serviceaccount=default -n {{ item }}"
+  changed_when: false
+  with_items:
+  - "{{ parks_dev_namespace }}"
+  - "{{ parks_prod_namespace }}"
+
+
+
+

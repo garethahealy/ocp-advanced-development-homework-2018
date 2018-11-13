@@ -1,0 +1,65 @@
+---
+
+ansible_connection: local
+
+openshift_cluster_content:
+- object: jenkins-deploy
+  content:
+  - name: jenkins
+    template: "{{ playbook_dir }}/openshift-templates/jenkins/jenkins-persistent-template.yml"
+    params: "{{ playbook_dir }}/params/jenkins/deploy"
+    namespace: "{{ jenkins_namespace }}"
+    tags:
+    - jenkins
+  - name: jenkins-slave
+    template: "{{ playbook_dir }}/openshift-templates/jenkins-slave/jenkins-slave-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    tags:
+    - jenkins-slave
+
+- object: build-configs
+  content:
+  - name: mlbparks-pipeline-bc
+    template: "{{ playbook_dir }}/openshift-templates/mlbparks/mlbparks-pipeline-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    params_from_vars:
+      GUID: "{{ my_guid }}"
+      CLUSTER: "{{ cluster_uri }}"
+      REPO: "{{ github_repo }}"
+    tags:
+    - mlbparks
+  - name: mlbparks-binary-bc
+    template: "{{ playbook_dir }}/openshift-templates/mlbparks/mlbparks-binary-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    tags:
+    - mlbparks
+
+  - name: nationalparks-pipeline-bc
+    template: "{{ playbook_dir }}/openshift-templates/nationalparks/nationalparks-pipeline-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    params_from_vars:
+      GUID: "{{ my_guid }}"
+      CLUSTER: "{{ cluster_uri }}"
+      REPO: "{{ github_repo }}"
+    tags:
+    - nationalparks
+  - name: nationalparks-binary-bc
+    template: "{{ playbook_dir }}/openshift-templates/nationalparks/nationalparks-binary-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    tags:
+    - nationalparks
+
+  - name: parksmap-pipeline-bc
+    template: "{{ playbook_dir }}/openshift-templates/parksmap/parksmap-pipeline-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    params_from_vars:
+      GUID: "{{ my_guid }}"
+      CLUSTER: "{{ cluster_uri }}"
+      REPO: "{{ github_repo }}"
+    tags:
+    - parksmap
+  - name: parksmap-binary-bc
+    template: "{{ playbook_dir }}/openshift-templates/parksmap/parksmap-binary-template.yml"
+    namespace: "{{ jenkins_namespace }}"
+    tags:
+    - parksmap

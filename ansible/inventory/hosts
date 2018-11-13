@@ -1,0 +1,14 @@
+[setup_nexus]
+nexus-tooling
+
+[setup_sonar]
+sonar-tooling
+
+[setup_jenkins]
+jenkins-tooling
+
+[setup_dev]
+dev-tooling
+
+[setup_prod]
+prod-tooling

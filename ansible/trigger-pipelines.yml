@@ -1,0 +1,9 @@
+---
+- name: "Trigger pipelines"
+  hosts: localhost
+  connection: local
+  vars:
+    jenkins_namespace: "{{ GUID }}-jenkins"
+
+  roles:
+  - { role: trigger-app-pipelines }

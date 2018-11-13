@@ -1,0 +1,161 @@
+// Jenkinsfile for ParksMap
+podTemplate(
+  label: "skopeo-pod",
+  cloud: "openshift",
+  inheritFrom: "maven",
+  containers: [
+    containerTemplate(
+      name: "jnlp",
+      image: "docker-registry.default.svc:5000/${GUID}-jenkins/jenkins-agent-appdev",
+      resourceRequestMemory: "1Gi",
+      resourceLimitMemory: "2Gi"
+    )
+  ]
+) {
+  node('skopeo-pod') {
+    echo "GUID: ${GUID}"
+    echo "CLUSTER: ${CLUSTER}"
+
+    // Your Pipeline Code goes here. Make sure to use the ${GUID} and ${CLUSTER} parameters where appropriate
+    // You need to build the application in directory `ParksMap`.
+    // Also copy "../nexus_settings.xml" to your build directory
+    // and replace 'GUID' in the file with your ${GUID} to point to >your< Nexus instance
+
+    stage('Checkout Source') {
+      sh "git clone https://github.com/garethahealy/ocp-advanced-development-homework-2018.git ."
+    }
+
+    stage('Build Source') {
+      dir("advdev_homework_template/ParksMap") {
+        sh "mvn -s ../nexus_settings.xml clean package -DskipTests=true"
+      }
+    }
+
+    stage('Test Source') {
+      dir("advdev_homework_template/ParksMap") {
+        sh "mvn -s ../nexus_settings.xml test"
+      }
+    }
+
+    stage('Code Analysis') {
+      dir("advdev_homework_template/ParksMap") {
+        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube-${GUID}-sonarqube.apps.${CLUSTER}"
+      }
+    }
+
+    stage('Build Container') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject() {
+            def builder = openshift.selector("buildconfig", "parksmap-binary")
+            builder.startBuild("--from-file=target/parksmap.jar").logs("-f")
+
+            openshift.tag("parksmap:latest", "${GUID}-parks-dev/parksmap:latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Dev') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-dev") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-dev", "SERVICE_NAME=parksmap", "APPNAME_ENV='ParksMap (Dev)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "parksmap")
+            dc.rollout().status("--watch=true")
+
+            def response = sh(returnStdout: true, script: "curl parksmap.${GUID}-parks-dev.svc.cluster.local:8080/ws/appname/").trim()
+            echo "response == $response"
+            if (!response.contains("ParksMap (Dev)")) {
+              error "Got incorrect response"
+            }
+
+            openshift.tag("parksmap:latest", "${GUID}-parks-prod/parksmap:latest")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Route for Dev') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-dev") {
+            def routeSelector = openshift.selector("route", "parksmap")
+            if (!routeSelector.exists()) {
+              def templateFile = readFile file: "openshift/frontend-route-template.yml", encoding: "UTF8"
+              def template = openshift.process(templateFile, "SERVICE_NAME=parksmap")
+              openshift.apply(template)
+            }
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Prod Blue') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=parksmap-blue", "APPNAME_ENV='ParksMap (Blue)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "parksmap-blue")
+            dc.rollout().status("--watch=true")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Prod Green') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
+            def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=parksmap-green", "APPNAME_ENV='ParksMap (Green)'")
+            openshift.apply(template)
+
+            def dc = openshift.selector("dc", "parksmap-green")
+            dc.rollout().status("--watch=true")
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Route for Prod and switch') {
+      dir("advdev_homework_template/ParksMap") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def routeSelector = openshift.selector("route", "parksmap")
+            if (routeSelector.exists()) {
+              openshift.set("route-backends", "parksmap", "parksmap-blue=0", "parksmap-green=100")
+            } else {
+              def templateFile = readFile file: "openshift/frontend-route-template.yml", encoding: "UTF8"
+              def template = openshift.process(templateFile, "SERVICE_NAME=parksmap")
+              openshift.apply(template)
+
+              openshift.set("route-backends", "parksmap", "parksmap-blue=100", "parksmap-green=0")
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Convenience Functions to read variables from the pom.xml
+// Do not change anything below this line.
+def getVersionFromPom(pom) {
+  def matcher = readFile(pom) =~ '<version>(.+)</version>'
+  matcher ? matcher[0][1] : null
+}
+def getGroupIdFromPom(pom) {
+  def matcher = readFile(pom) =~ '<groupId>(.+)</groupId>'
+  matcher ? matcher[0][1] : null
+}
+def getArtifactIdFromPom(pom) {
+  def matcher = readFile(pom) =~ '<artifactId>(.+)</artifactId>'
+  matcher ? matcher[0][1] : null
+}

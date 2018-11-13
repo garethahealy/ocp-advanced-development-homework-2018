@@ -1,0 +1,13 @@
+---
+
+ansible_connection: local
+
+openshift_cluster_content:
+- object: parks-dev-deploy
+  content:
+  - name: mongodb
+    template: "{{ playbook_dir }}/openshift-templates/mongodb/mongodb-persistent-template.yml"
+    params: "{{ playbook_dir }}/params/mongodb/deploy-dev"
+    namespace: "{{ parks_dev_namespace }}"
+    tags:
+    - mongodb

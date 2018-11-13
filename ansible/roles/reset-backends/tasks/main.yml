@@ -1,0 +1,7 @@
+---
+- name: Set parkmap to blue
+  command: "oc set route-backends parkmap-blue=100 parkmap-green=0 -n {{ parks_prod_namespace }}"
+  changed_when: false
+
+
+

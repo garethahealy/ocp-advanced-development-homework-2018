@@ -1,0 +1,12 @@
+---
+- name: Starting build configs
+  command: "oc start-build {{ item }} --wait=true -n {{ jenkins_namespace }}"
+  changed_when: false
+  with_items:
+  - nationalparks-pipeline
+  - mlbparks-pipeline
+  - parksmap-pipeline
+
+
+
+

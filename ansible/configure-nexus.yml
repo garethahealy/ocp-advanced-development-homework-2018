@@ -1,0 +1,9 @@
+---
+- name: Configure nexus
+  hosts: localhost
+  connection: local
+  vars:
+    nexus_namespace: "{{ GUID }}-nexus"
+
+  roles:
+  - { role: configure-nexus-repos }

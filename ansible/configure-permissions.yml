@@ -1,0 +1,11 @@
+---
+- name: "Configure permissions"
+  hosts: localhost
+  connection: local
+  vars:
+    jenkins_namespace: "{{ GUID }}-jenkins"
+    parks_dev_namespace: "{{ GUID }}-parks-dev"
+    parks_prod_namespace: "{{ GUID }}-parks-prod"
+
+  roles:
+  - { role: configure-jenkins-permissions }

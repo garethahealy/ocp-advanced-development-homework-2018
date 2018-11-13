@@ -1,0 +1,23 @@
+---
+- name: "Get token from oc whoami"
+  command: oc whoami -t
+  register: oc_token_result
+  changed_when: false
+
+- name: "Look up Jenkins URL"
+  command: >
+    oc get route jenkins -n {{ jenkins_namespace }} -o custom-columns=ROUTE:.spec.host --no-headers
+  register: jenkins_url_result
+
+- name: "Check jenkins listening on https://{{ jenkins_url_result.stdout }}"
+  uri: 
+    url: "https://{{ jenkins_url_result.stdout }}"
+    method: GET
+    status_code: 200
+    headers:
+      Authorization: "Bearer {{ oc_token_result.stdout }}"
+  retries: 180
+  delay: 5
+  register: jenkins_result
+  until: jenkins_result is not failed
+  changed_when: false
