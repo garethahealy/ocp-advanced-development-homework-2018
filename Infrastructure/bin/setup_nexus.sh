@@ -29,7 +29,5 @@ echo "Setting up Nexus in project $GUID-nexus"
 # oc new-app -f ../templates/nexus.yaml --param .....
 
 # To be Implemented by Student
-oc project ${GUID}-nexus
-
 ansible-playbook ansible/deploy.yml -i ansible/inventory/ -e target=setup_nexus -e GUID=$GUID
 ansible-playbook ansible/configure-nexus.yml -e GUID=$GUID

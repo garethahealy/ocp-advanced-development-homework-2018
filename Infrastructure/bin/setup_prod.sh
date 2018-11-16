@@ -13,6 +13,4 @@ echo "Setting up Parks Production Environment in project ${GUID}-parks-prod"
 # The Green services/routes need to be active initially to guarantee a successful grading pipeline run.
 
 # To be Implemented by Student
-oc project ${GUID}-parks-prod
-
 ansible-playbook ansible/deploy.yml -i ansible/inventory/ -e target=setup_prod -e GUID=$GUID

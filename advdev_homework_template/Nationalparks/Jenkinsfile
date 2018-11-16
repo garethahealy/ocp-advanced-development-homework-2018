@@ -6,7 +6,7 @@ podTemplate(
   containers: [
     containerTemplate(
       name: "jnlp",
-      image: "docker-registry.default.svc:5000/${GUID}-jenkins/jenkins-agent-appdev",
+      image: "172.30.1.1:5000/${GUID}-jenkins/jenkins-agent-appdev",
       resourceRequestMemory: "1Gi",
       resourceLimitMemory: "2Gi"
     )
@@ -39,7 +39,7 @@ podTemplate(
 
     stage('Code Analysis') {
       dir("advdev_homework_template/Nationalparks") {
-        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube-${GUID}-sonarqube.apps.${CLUSTER}"
+        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube.${GUID}-sonarqube.svc.cluster.local"
       }
     }
 
@@ -79,12 +79,49 @@ podTemplate(
       }
     }
 
+    def isBlueBuild = false
+    def isGreenBuild = false
+
+    stage('Check whats deployed to Prod') {
+      dir("advdev_homework_template/MLBParks") {
+        openshift.withCluster() {
+          openshift.withProject("${GUID}-parks-prod") {
+            def blueServiceSelector = openshift.selector("svc", "mlbparks-blue")
+            def greenServiceSelector = openshift.selector("svc", "mlbparks-green")
+
+            if (!blueServiceSelector.exists() && !greenServiceSelector.exists()) {
+              //First run, so deploy blue
+              isBlueBuild = true
+              isGreenBuild = false
+            } else if (blueServiceSelector.exists()) {
+              def isLabelMissing = blueServiceSelector.object().metadata.labels.type == null
+
+              //Green is active, so deploy blue
+              isBlueBuild = true
+              isGreenBuild = false
+            } else if (greenServiceSelector.exists()) {
+              def isLabelMissing = blueServiceSelector.object().metadata.labels.type == null
+
+              //Blue is active, so deploy green
+              isBlueBuild = false
+              isGreenBuild = true
+            }
+          }
+        }
+      }
+    }
+
     stage('Deploy to Prod Blue') {
       dir("advdev_homework_template/Nationalparks") {
         openshift.withCluster() {
           openshift.withProject("${GUID}-parks-prod") {
             def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
             def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=nationalparks-blue", "APPNAME_ENV='National Parks (Blue)'")
+            if (isGreenBuild) {
+              def svc = template.find { it.kind == "Service" }
+              svc.metadata.labels.remove("type")
+            }
+
             openshift.apply(template)
 
             def dc = openshift.selector("dc", "nationalparks-blue")
@@ -106,6 +143,11 @@ podTemplate(
           openshift.withProject("${GUID}-parks-prod") {
             def templateFile = readFile file: "openshift/template.yml", encoding: "UTF8"
             def template = openshift.process(templateFile, "PROJECT=${GUID}-parks-prod", "SERVICE_NAME=nationalparks-green", "APPNAME_ENV='National Parks (Green)'")
+            if (isBlueBuild) {
+              def svc = template.find { it.kind == "Service" }
+              svc.metadata.labels.remove("type")
+            }
+
             openshift.apply(template)
 
             def dc = openshift.selector("dc", "nationalparks-green")

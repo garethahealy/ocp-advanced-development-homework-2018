@@ -1,6 +1,8 @@
 [![License](https://img.shields.io/hexpm/l/plug.svg?maxAge=2592000)]()
 
 # ocp-advanced-development-homework-2018
+- ssh -i ~/.ssh/opentlc gahealy-redhat.com@bastion.c45a.example.opentlc.com
+- git clone https://github.com/garethahealy/ocp-advanced-development-homework-2018.git
 
 ## Running as a different user
 - export GUID={opentlc guid}

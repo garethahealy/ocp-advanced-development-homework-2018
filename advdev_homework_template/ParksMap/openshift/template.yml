@@ -44,7 +44,7 @@ objects:
         - envFrom:
           - configMapRef:
               name: "${SERVICE_NAME}"
-          image: "docker-registry.default.svc:5000/${PROJECT}/parksmap:latest"
+          image: "172.30.1.1:5000/${PROJECT}/parksmap:latest"
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 3

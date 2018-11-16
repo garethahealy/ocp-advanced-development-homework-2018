@@ -14,6 +14,4 @@ echo "Setting up Sonarqube in project $GUID-sonarqube"
 # oc new-app -f ../templates/sonarqube.yaml --param .....
 
 # To be Implemented by Student
-oc project ${GUID}-sonarqube
-
 ansible-playbook ansible/deploy.yml -i ansible/inventory/ -e target=setup_sonar -e GUID=$GUID

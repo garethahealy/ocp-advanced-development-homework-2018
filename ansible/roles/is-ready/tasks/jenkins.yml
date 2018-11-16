@@ -1,6 +1,6 @@
 ---
-- name: "Get token from oc whoami"
-  command: oc whoami -t
+- name: "Get sa/jenkins token from {{ jenkins_namespace }}"
+  command: oc sa get-token jenkins -n {{ jenkins_namespace }}
   register: oc_token_result
   changed_when: false
 
@@ -14,6 +14,7 @@
     url: "https://{{ jenkins_url_result.stdout }}"
     method: GET
     status_code: 200
+    validate_certs: no
     headers:
       Authorization: "Bearer {{ oc_token_result.stdout }}"
   retries: 180
