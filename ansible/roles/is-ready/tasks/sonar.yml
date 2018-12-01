@@ -1,4 +1,7 @@
 ---
+- name: "Wait for sonarqube deployment to complete"
+  command: oc rollout status dc/sonarqube --watch=true -n {{ sonarqube_namespace }}
+
 - name: "Look up Sonar URL"
   command: >
     oc get route sonarqube -n {{ sonarqube_namespace }} -o custom-columns=ROUTE:.spec.host --no-headers

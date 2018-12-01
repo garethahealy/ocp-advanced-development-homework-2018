@@ -1,4 +1,7 @@
 ---
+- name: "Wait for jenkins deployment to complete"
+  command: oc rollout status dc/jenkins --watch=true -n {{ jenkins_namespace }}
+
 - name: "Get sa/jenkins token from {{ jenkins_namespace }}"
   command: oc sa get-token jenkins -n {{ jenkins_namespace }}
   register: oc_token_result

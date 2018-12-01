@@ -1,4 +1,7 @@
 ---
+- name: "Wait for nexus deployment to complete"
+  command: oc rollout status dc/nexus --watch=true -n {{ nexus_namespace }}
+
 - name: "Look up Nexus URL"
   command: >
     oc get route nexus -n {{ nexus_namespace }} -o custom-columns=ROUTE:.spec.host --no-headers
