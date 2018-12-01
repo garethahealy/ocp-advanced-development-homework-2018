@@ -39,7 +39,7 @@ podTemplate(
 
     stage('Code Analysis') {
       dir("advdev_homework_template/MLBParks") {
-        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube.${GUID}-sonarqube.svc.cluster.local"
+        sh "mvn sonar:sonar -s ../nexus_settings.xml -Dsonar.host.url=http://sonarqube.${GUID}-sonarqube.svc.cluster.local:9000"
       }
     }
 
